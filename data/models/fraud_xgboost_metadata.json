@@ -1,0 +1,33 @@
+{
+  "model_name": "fraud_xgboost",
+  "version": "1.0.0",
+  "training_date": "2026-08-19T18:11:28.381331+00:00",
+  "dataset_version": "synthetic-v1",
+  "features_version": "1.0.0",
+  "metrics": {
+    "precision": 1.0,
+    "recall": 1.0,
+    "f1": 1.0,
+    "pr_auc": 1.0,
+    "roc_auc": 1.0,
+    "confusion_matrix": [
+      [
+        3880,
+        0
+      ],
+      [
+        0,
+        120
+      ]
+    ],
+    "confusion_matrix_labels": [
+      "true_negative",
+      "false_positive",
+      "false_negative",
+      "true_positive"
+    ]
+  },
+  "n_train": 16000,
+  "n_test": 4000,
+  "algorithm": "XGBClassifier"
+}

@@ -1,0 +1,39 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Databases and local storage
+fraudguard.db
+*.sqlite
+*.sqlite3
+*.db
+
+# Test artifacts and outputs
+.pytest_cache/
+pytest_output.txt
+.coverage
+htmlcov/
+.coverage.*
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE / Editor directories
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
