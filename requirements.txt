@@ -4,7 +4,7 @@ pydantic==2.9.2
 pydantic-settings==2.5.2
 sqlalchemy==2.0.35
 alembic==1.13.2
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.9
 redis==5.0.8
 xgboost==2.1.1
 scikit-learn==1.5.2
