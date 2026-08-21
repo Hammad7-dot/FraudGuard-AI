@@ -2,6 +2,7 @@
 from functools import lru_cache
 from typing import List
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,9 +23,17 @@ class Settings(BaseSettings):
     redis_socket_timeout: float = 0.5
 
     # Security
-    api_key: str = "dev-api-key-change-me"
+    api_key: str = ""
     require_api_key: bool = True
     rate_limit_per_minute: int = 120
+
+    @model_validator(mode="after")
+    def _check_api_key_configured(self) -> "Settings":
+        if self.require_api_key and not self.api_key:
+            raise ValueError(
+                "API_KEY must be set when REQUIRE_API_KEY is true (no insecure default allowed)"
+            )
+        return self
 
     # Risk thresholds
     risk_low_max: int = 29

@@ -1,4 +1,5 @@
 """API key auth + simple in-memory rate limiting."""
+import hmac
 import time
 from collections import defaultdict, deque
 from typing import Deque, Dict
@@ -15,7 +16,7 @@ def verify_api_key(x_api_key: str | None = Header(default=None)) -> str:
     settings = get_settings()
     if not settings.require_api_key:
         return "anonymous"
-    if not x_api_key or x_api_key != settings.api_key:
+    if not x_api_key or not hmac.compare_digest(x_api_key, settings.api_key):
         raise UnauthorizedError("invalid or missing API key")
     return x_api_key
 
