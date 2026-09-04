@@ -37,7 +37,10 @@ class ShapExplainer:
             return []
         try:
             x = np.array(feature_vector, dtype=float).reshape(1, -1)
-            shap_values = self._explainer.shap_values(x)
+            explainer = self._explainer
+            if explainer is None:
+                return []
+            shap_values = explainer.shap_values(x)
             # For a binary classifier, shap_values() may return [class0, class1];
             # we want the fraud (positive) class's contributions.
             values = shap_values[1] if isinstance(shap_values, list) else shap_values[0]

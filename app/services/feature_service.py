@@ -128,7 +128,9 @@ class FeatureService:
         avg_amount = user_stats["avg_transaction_amount"] or tx.amount
         amount_deviation = (tx.amount - avg_amount) / avg_amount if avg_amount else 0.0
 
-        tx_5m, tx_15m, tx_1h, amt_1h = self.velocity.record_and_get_velocity(tx.user_id, tx.amount, ts)
+        tx_5m, tx_15m, tx_1h, amt_1h = self.velocity.preview(
+            tx.user_id, tx.transaction_id, tx.amount, ts
+        )
 
         new_device = self.devices.is_new_device(tx.user_id, tx.device_id)
         device_count = self.devices.device_count(tx.user_id)
@@ -163,11 +165,11 @@ class FeatureService:
     def record_transaction_state(self, tx: TransactionCreate) -> None:
         """Update Redis real-time state after processing a transaction.
 
-        Velocity is already recorded atomically as part of build_features() (see
-        VelocityTracker.record_and_get_velocity); only device/location state remains here.
+        All real-time state is recorded only after the database commit succeeds.
 
         Args:
             tx: Transaction data to record in Redis state.
         """
+        self.velocity.record(tx.user_id, tx.transaction_id, tx.amount, tx.timestamp)
         self.devices.record_device(tx.user_id, tx.device_id)
         self.locations.record_location(tx.user_id, tx.country, tx.timestamp)

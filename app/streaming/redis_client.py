@@ -13,7 +13,7 @@ import logging
 import re
 import time
 from enum import Enum
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Optional, TypeVar, cast
 
 import redis
 
@@ -209,7 +209,10 @@ class RedisClient:
         self._safe(op)
 
     def zrangebyscore(self, key: str, min_score: float, max_score: float) -> list:
-        return self._safe(lambda: self._client.zrangebyscore(key, min_score, max_score), default=[]) or []
+        return self._safe(
+            lambda: cast(redis.Redis, self._client).zrangebyscore(key, min_score, max_score),
+            default=[],
+        ) or []
 
     def atomic(self, build_fn: Callable) -> list:
         """Run build_fn(pipe) against a transactional pipeline and return pipe.execute() results.
@@ -233,10 +236,10 @@ class RedisClient:
         self._safe(op)
 
     def smembers(self, key: str) -> set:
-        return self._safe(lambda: self._client.smembers(key), default=set()) or set()
+        return self._safe(lambda: cast(redis.Redis, self._client).smembers(key), default=set()) or set()
 
     def scard(self, key: str) -> int:
-        return self._safe(lambda: self._client.scard(key), default=0) or 0
+        return self._safe(lambda: cast(redis.Redis, self._client).scard(key), default=0) or 0
 
     def hset(self, key: str, mapping: dict, ttl: int) -> None:
         def op():
@@ -247,7 +250,7 @@ class RedisClient:
         self._safe(op)
 
     def hgetall(self, key: str) -> dict:
-        return self._safe(lambda: self._client.hgetall(key), default={}) or {}
+        return self._safe(lambda: cast(redis.Redis, self._client).hgetall(key), default={}) or {}
 
 
 _client_singleton: Optional[RedisClient] = None

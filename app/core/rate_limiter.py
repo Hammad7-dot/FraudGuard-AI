@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import time
 from collections import defaultdict
-from typing import Dict, Callable, Optional
+from typing import Callable, Dict, Optional, Set
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -18,7 +18,7 @@ class TokenBucket:
     def __init__(self, rate: int, per: int = 60) -> None:
         self.rate = rate  # tokens per period
         self.per = per    # period in seconds
-        self.tokens = rate
+        self.tokens = float(rate)
         self.last_update = time.monotonic()
 
     def consume(self, tokens: int = 1) -> bool:
@@ -41,10 +41,22 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
     Reads rate limit from settings dynamically to support runtime configuration changes.
     """
 
-    def __init__(self, app, rate_limit_getter: Optional[Callable[[], int]] = None, per: int = 60) -> None:
+    def __init__(
+        self,
+        app,
+        rate_limit_getter: Optional[Callable[[], int]] = None,
+        per: int = 60,
+        trusted_proxy_ips: Optional[Set[str]] = None,
+        bucket_idle_ttl: int = 300,
+        max_client_buckets: int = 10_000,
+    ) -> None:
         super().__init__(app)
         self._rate_limit_getter = rate_limit_getter or (lambda: get_settings().rate_limit_per_minute)
         self.per = per
+        self.trusted_proxy_ips = trusted_proxy_ips or set()
+        self.bucket_idle_ttl = bucket_idle_ttl
+        self.max_client_buckets = max(1, max_client_buckets)
+        self._last_prune = time.monotonic()
         self.buckets: Dict[str, TokenBucket] = defaultdict(
             lambda: TokenBucket(self._rate_limit_getter(), per)
         )
@@ -56,13 +68,29 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
     def _get_client_key(self, request: Request) -> str:
         """Get client identifier for rate limiting."""
         # Use X-Forwarded-For if behind proxy, otherwise client host
+        client_host = request.client.host if request.client else "unknown"
         forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
+        if forwarded and client_host in self.trusted_proxy_ips:
             return forwarded.split(",")[0].strip()
-        return request.client.host if request.client else "unknown"
+        return client_host
+
+    def _prune_buckets(self) -> None:
+        now = time.monotonic()
+        stale = [
+            key for key, bucket in self.buckets.items()
+            if now - bucket.last_update > self.bucket_idle_ttl
+        ]
+        for key in stale:
+            self.buckets.pop(key, None)
+        self._last_prune = now
 
     def _get_or_create_bucket(self, client_key: str) -> TokenBucket:
         """Get or create bucket for client, updating rate limit if changed."""
+        if time.monotonic() - self._last_prune >= min(self.bucket_idle_ttl, 60):
+            self._prune_buckets()
+        if client_key not in self.buckets and len(self.buckets) >= self.max_client_buckets:
+            oldest_key = min(self.buckets, key=lambda key: self.buckets[key].last_update)
+            self.buckets.pop(oldest_key, None)
         bucket = self.buckets[client_key]
         current_rate = self._get_rate_limit()
         if bucket.rate != current_rate:
@@ -105,7 +133,7 @@ class RateLimiterMiddleware(BaseHTTPMiddleware):
         return response
 
 
-def create_rate_limiter_middleware(app, rate_limit: int = None, per: int = 60):
+def create_rate_limiter_middleware(app, rate_limit: Optional[int] = None, per: int = 60):
     """Factory function to create rate limiter middleware with settings.
 
     Args:
@@ -120,4 +148,12 @@ def create_rate_limiter_middleware(app, rate_limit: int = None, per: int = 60):
         rate_limit_getter = lambda: rate_limit
     else:
         rate_limit_getter = lambda: get_settings().rate_limit_per_minute
-    return RateLimiterMiddleware(app, rate_limit_getter=rate_limit_getter, per=per)
+    settings = get_settings()
+    return RateLimiterMiddleware(
+        app,
+        rate_limit_getter=rate_limit_getter,
+        per=per,
+        trusted_proxy_ips=set(settings.trusted_proxy_ips),
+        bucket_idle_ttl=settings.rate_limit_bucket_idle_seconds,
+        max_client_buckets=settings.rate_limit_max_clients,
+    )

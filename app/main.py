@@ -98,7 +98,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_exception_handler(FraudGuardError, fraudguard_exception_handler)
+app.add_exception_handler(FraudGuardError, fraudguard_exception_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
 app.include_router(health.router, prefix="/api/v1")

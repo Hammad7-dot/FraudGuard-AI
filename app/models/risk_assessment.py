@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 
+from typing import Optional
+
 from sqlalchemy import DateTime, Float, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,8 +23,8 @@ class RiskAssessment(Base):
     triggered_rules: Mapped[str] = mapped_column(Text, nullable=False, default="[]")
     model_version: Mapped[str] = mapped_column(String(50), default="1.0.0")
     processing_time_ms: Mapped[float] = mapped_column(Float, default=0.0)
-    analyst_feedback: Mapped[str] = mapped_column(String(50), nullable=True)
-    analyst_notes: Mapped[str] = mapped_column(Text, nullable=True)
+    analyst_feedback: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    analyst_notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, index=True, default=lambda: datetime.now(timezone.utc)
     )

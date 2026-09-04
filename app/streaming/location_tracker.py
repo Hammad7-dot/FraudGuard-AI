@@ -88,7 +88,17 @@ class LocationTracker:
             ts: Transaction timestamp (timezone-aware).
         """
         key = f"fraud:user:{safe_key_segment(user_id)}:last_location"
-        lat, lon = COUNTRY_CENTROIDS.get(country, (0.0, 0.0))
+        coordinates = COUNTRY_CENTROIDS.get(country)
+        if coordinates is None:
+            return
+        previous = self.get_last_location(user_id)
+        if previous:
+            try:
+                if float(previous["timestamp"]) >= ts.timestamp():
+                    return
+            except (KeyError, TypeError, ValueError):
+                pass
+        lat, lon = coordinates
         self.redis.hset(
             key,
             {"lat": lat, "lon": lon, "country": country, "timestamp": ts.timestamp()},
@@ -122,9 +132,15 @@ class LocationTracker:
         except (KeyError, ValueError, TypeError):
             return country_changed, 0.0, False
 
-        cur_lat, cur_lon = COUNTRY_CENTROIDS.get(country, (0.0, 0.0))
+        coordinates = COUNTRY_CENTROIDS.get(country)
+        if coordinates is None or prev_country not in COUNTRY_CENTROIDS:
+            return country_changed, 0.0, False
+        cur_lat, cur_lon = coordinates
+        elapsed_seconds = ts.timestamp() - prev_ts
+        if elapsed_seconds <= 0:
+            return country_changed, 0.0, False
         distance_km = _haversine_km((prev_lat, prev_lon), (cur_lat, cur_lon))
-        elapsed_hours = max((ts.timestamp() - prev_ts) / 3600.0, 1e-6)
+        elapsed_hours = elapsed_seconds / 3600.0
         speed_kmh = distance_km / elapsed_hours
         impossible_travel = country_changed and speed_kmh > MAX_PLAUSIBLE_KMH
         return country_changed, distance_km, impossible_travel

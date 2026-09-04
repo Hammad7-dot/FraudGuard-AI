@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     api_key: str = ""
     require_api_key: bool = True
     rate_limit_per_minute: int = 120
+    trusted_proxy_ips: List[str] = ["127.0.0.1", "::1"]
+    rate_limit_bucket_idle_seconds: int = 300
+    rate_limit_max_clients: int = 10_000
 
     @model_validator(mode="after")
     def _check_api_key_configured(self) -> "Settings":

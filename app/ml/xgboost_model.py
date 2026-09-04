@@ -30,7 +30,6 @@ def build_classifier():
             subsample=0.9,
             colsample_bytree=0.9,
             eval_metric="logloss",
-            use_label_encoder=False,
             random_state=42,
         )
     from sklearn.ensemble import GradientBoostingClassifier

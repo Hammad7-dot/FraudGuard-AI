@@ -70,7 +70,7 @@ class ValidationMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-def create_validation_middleware(app, max_body_size: int = None):
+def create_validation_middleware(app, max_body_size: Optional[int] = None):
     """Factory function to create validation middleware with settings."""
     if max_body_size is None:
         max_body_size = get_settings().max_request_bytes

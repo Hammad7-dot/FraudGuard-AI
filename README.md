@@ -31,7 +31,7 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Uses SQLite (DATABASE_URL default) and gracefully degrades if Redis isn't running.
-cp .env.example .env   # optional; defaults already work for local dev
+cp .env.example .env   # required: replace API_KEY with a private value
 
 # Train models (writes versioned artifacts to data/models/)
 python -m ml_pipeline.serialize_model
@@ -46,12 +46,14 @@ python scripts/seed_db.py 100
 streamlit run dashboard/streamlit_app.py
 ```
 
-By default `REQUIRE_API_KEY=true` and `API_KEY=dev-api-key-change-me` — send header
-`x-api-key: dev-api-key-change-me` on protected requests.
+By default `REQUIRE_API_KEY=true`, so `API_KEY` must be supplied through `.env` or the
+environment. Send that private value in the `x-api-key` header on protected requests.
+The static dashboard asks for the key at runtime and keeps it only in page memory.
 
 ## Full stack via Docker Compose (FastAPI + Postgres + Redis + Streamlit)
 
 ```bash
+$env:API_KEY="replace-with-a-long-random-value"  # PowerShell
 docker compose up --build
 ```
 

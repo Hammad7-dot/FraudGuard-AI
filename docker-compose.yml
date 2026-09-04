@@ -35,7 +35,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg2://fraudguard:fraudguard@postgres:5432/fraudguard
       REDIS_URL: redis://redis:6379/0
-      API_KEY: dev-api-key-change-me
+      API_KEY: ${API_KEY:?Set API_KEY in your environment before starting Docker Compose}
     ports:
       - "8000:8000"
     volumes:
@@ -48,7 +48,7 @@ services:
       - api
     environment:
       API_BASE_URL: http://api:8000/api/v1
-      API_KEY: dev-api-key-change-me
+      API_KEY: ${API_KEY:?Set API_KEY in your environment before starting Docker Compose}
       DATABASE_URL: postgresql+psycopg2://fraudguard:fraudguard@postgres:5432/fraudguard
     ports:
       - "8501:8501"

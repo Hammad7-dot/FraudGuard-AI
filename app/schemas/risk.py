@@ -31,12 +31,11 @@ class UserRiskResponse(BaseModel):
 
 
 class UserHistoryItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     transaction_id: str
     amount: float
     risk_score: float
     risk_level: str
     decision: str
     timestamp: datetime
-
-    class Config:
-        from_attributes = True

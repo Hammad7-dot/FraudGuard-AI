@@ -664,7 +664,7 @@
   /* ================= CONFIG ================= */
   // Served from the same FastAPI origin, so relative paths avoid CORS entirely.
   const API_BASE = (window.FRAUDGUARD_API_BASE || "/api/v1");
-  const API_KEY = (window.FRAUDGUARD_API_KEY || "dev-api-key-change-me");
+  let API_KEY = "";
 
   const LEVELS = ["LOW","MEDIUM","HIGH","CRITICAL"];
   const LEVEL_COLOR = { LOW:"var(--low)", MEDIUM:"var(--medium)", HIGH:"var(--high)", CRITICAL:"var(--critical)" };
@@ -676,6 +676,15 @@
     const v = Number(n) || 0;
     return "$" + v.toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
   }
+  function escapeHtml(value){
+    const element = document.createElement("div");
+    element.textContent = String(value ?? "");
+    return element.innerHTML;
+  }
+  function getApiKey(){
+    if (!API_KEY) API_KEY = window.prompt("Enter your FraudGuard API key") || "";
+    return API_KEY;
+  }
   function verdictClassForLevel(level){
     if (level === "LOW") return "ok";
     if (level === "MEDIUM") return "warn";
@@ -684,7 +693,7 @@
 
   async function api(path, opts){
     const res = await fetch(API_BASE + path, Object.assign({
-      headers: { "x-api-key": API_KEY, "Accept": "application/json" }
+      headers: { "x-api-key": getApiKey(), "Accept": "application/json" }
     }, opts || {}));
     if (!res.ok){
       const body = await res.text().catch(() => "");
@@ -763,8 +772,8 @@
       if (flashFirst && idx === 0) tr.className = "flash";
       const topReason = (t.reasons && t.reasons[0]) || "—";
       tr.innerHTML = `
-        <td class="mono">${t.transaction_id}</td>
-        <td class="mono">${t.user_id}</td>
+        <td class="mono">${escapeHtml(t.transaction_id)}</td>
+        <td class="mono">${escapeHtml(t.user_id)}</td>
         <td>${money(t.amount)}</td>
         <td>
           <div class="score-cell">
@@ -772,9 +781,9 @@
             <span class="score-num">${Math.round(t.risk_score)}</span>
           </div>
         </td>
-        <td><span class="badge ${LEVEL_BADGE[t.risk_level] || ""}">${t.risk_level}</span></td>
-        <td><b class="${DECISION_CLASS[t.decision] || ""}">${t.decision}</b></td>
-        <td class="reason-cell" title="${topReason}">${topReason}</td>
+        <td><span class="badge ${LEVEL_BADGE[t.risk_level] || ""}">${escapeHtml(t.risk_level)}</span></td>
+        <td><b class="${DECISION_CLASS[t.decision] || ""}">${escapeHtml(t.decision)}</b></td>
+        <td class="reason-cell" title="${escapeHtml(topReason)}">${escapeHtml(topReason)}</td>
       `;
       tr.addEventListener("click", () => askAboutTransaction(t.transaction_id));
       tbody.appendChild(tr);
@@ -819,19 +828,19 @@
   function explanationCardHTML(risk){
     const cls = verdictClassForLevel(risk.risk_level);
     const reasons = (risk.reasons && risk.reasons.length) ? risk.reasons : ["No individual rule/anomaly reasons were recorded for this transaction."];
-    const listHTML = reasons.map(r => `<li>${r}</li>`).join("");
+    const listHTML = reasons.map(r => `<li>${escapeHtml(r)}</li>`).join("");
     const decisionWord = risk.decision === "BLOCK" ? "automatically <b>BLOCKED</b>" :
                           risk.decision === "REVIEW" ? "routed for <b>manual REVIEW</b>" :
                           "automatically <b>APPROVED</b>";
     return `
       <div class="copilot-card-label">🛡 Risk Copilot</div>
-      <p>Transaction <span class="mono-inline">${risk.transaction_id}</span> was flagged <b>${risk.risk_level}</b> and ${decisionWord}. Here's the breakdown:</p>
+      <p>Transaction <span class="mono-inline">${escapeHtml(risk.transaction_id)}</span> was flagged <b>${escapeHtml(risk.risk_level)}</b> and ${decisionWord}. Here's the breakdown:</p>
       <div class="verdict-box ${cls}">
         <div class="verdict-top">
           <div class="verdict-score ${cls}">${Math.round(risk.risk_score)}</div>
-          <div class="verdict-badge ${cls}">${risk.risk_level}</div>
+          <div class="verdict-badge ${cls}">${escapeHtml(risk.risk_level)}</div>
         </div>
-        <div class="verdict-sub">ML ${risk.fraud_probability.toFixed(2)} · Anomaly ${risk.anomaly_score.toFixed(2)} · Rules ${risk.rule_score.toFixed(2)} · model ${risk.model_version}</div>
+        <div class="verdict-sub">ML ${risk.fraud_probability.toFixed(2)} · Anomaly ${risk.anomaly_score.toFixed(2)} · Rules ${risk.rule_score.toFixed(2)} · model ${escapeHtml(risk.model_version)}</div>
         <ul class="verdict-list ${cls}">${listHTML}</ul>
       </div>
     `;
@@ -839,7 +848,7 @@
 
   async function askAboutTransaction(id){
     const verb = "checking";
-    addUserMsg(`Why was txn <span class="mono-inline">${id}</span> ${verb === "checking" ? "scored the way it was" : ""}?`);
+    addUserMsg(`Why was txn <span class="mono-inline">${escapeHtml(id)}</span> ${verb === "checking" ? "scored the way it was" : ""}?`);
     const typingEl = addTyping();
     try {
       const risk = await api(`/risk/${encodeURIComponent(id)}`);
@@ -848,12 +857,12 @@
       addCard(explanationCardHTML(risk));
     } catch (err){
       typingEl.remove();
-      addCard(`<div class="copilot-card-label">🛡 Risk Copilot</div><p>Couldn't find a risk assessment for <span class="mono-inline">${id}</span>. ${err.message}</p>`);
+      addCard(`<div class="copilot-card-label">🛡 Risk Copilot</div><p>Couldn't find a risk assessment for <span class="mono-inline">${escapeHtml(id)}</span>. ${escapeHtml(err.message)}</p>`);
     }
   }
 
   async function askAboutUser(id){
-    addUserMsg(`What's the risk history for user <span class="mono-inline">${id}</span>?`);
+    addUserMsg(`What's the risk history for user <span class="mono-inline">${escapeHtml(id)}</span>?`);
     const typingEl = addTyping();
     try {
       const [summary, history] = await Promise.all([
@@ -862,18 +871,18 @@
       ]);
       typingEl.remove();
       const recent = history.slice(0, 5).map(h =>
-        `<li>${h.transaction_id} — ${money(h.amount)} · score ${Math.round(h.risk_score)} · ${h.risk_level} · ${h.decision}</li>`
+        `<li>${escapeHtml(h.transaction_id)} — ${money(h.amount)} · score ${Math.round(h.risk_score)} · ${escapeHtml(h.risk_level)} · ${escapeHtml(h.decision)}</li>`
       ).join("");
       addCard(`
         <div class="copilot-card-label">🛡 Risk Copilot</div>
-        <p>User <span class="mono-inline">${id}</span> has <b>${summary.transaction_count}</b> transactions, average risk score <b>${summary.average_risk_score.toFixed(1)}</b>, <b>${summary.high_risk_count}</b> high-risk, <b>${summary.blocked_count}</b> blocked. Latest level: <b>${summary.latest_risk_level || "—"}</b>.</p>
+        <p>User <span class="mono-inline">${escapeHtml(id)}</span> has <b>${summary.transaction_count}</b> transactions, average risk score <b>${summary.average_risk_score.toFixed(1)}</b>, <b>${summary.high_risk_count}</b> high-risk, <b>${summary.blocked_count}</b> blocked. Latest level: <b>${escapeHtml(summary.latest_risk_level || "—")}</b>.</p>
         <div class="verdict-box ${verdictClassForLevel(summary.latest_risk_level || "")}">
           <ul class="verdict-list">${recent}</ul>
         </div>
       `);
     } catch (err){
       typingEl.remove();
-      addCard(`<div class="copilot-card-label">🛡 Risk Copilot</div><p>No history found for user <span class="mono-inline">${id}</span>. ${err.message}</p>`);
+      addCard(`<div class="copilot-card-label">🛡 Risk Copilot</div><p>No history found for user <span class="mono-inline">${escapeHtml(id)}</span>. ${escapeHtml(err.message)}</p>`);
     }
   }
 
@@ -886,8 +895,8 @@
     const topReason = (ref.reasons && ref.reasons[0]) || "elevated combined risk score";
     addCard(`
       <div class="copilot-card-label">🛡 Risk Copilot</div>
-      <p><b>Analyst note — ${ref.transaction_id}</b></p>
-      <p>Transaction flagged <b>${ref.risk_level}</b> (score ${Math.round(ref.risk_score)}) for user <span class="mono-inline">${ref.user_id}</span>, amount ${money(ref.amount)}. Primary driver: ${topReason}. Recommend ${ref.decision === "BLOCK" ? "confirming block and contacting cardholder" : "manual review before release"}. Auto-drafted from live data, ready to edit.</p>
+      <p><b>Analyst note — ${escapeHtml(ref.transaction_id)}</b></p>
+      <p>Transaction flagged <b>${escapeHtml(ref.risk_level)}</b> (score ${Math.round(ref.risk_score)}) for user <span class="mono-inline">${escapeHtml(ref.user_id)}</span>, amount ${money(ref.amount)}. Primary driver: ${escapeHtml(topReason)}. Recommend ${ref.decision === "BLOCK" ? "confirming block and contacting cardholder" : "manual review before release"}. Auto-drafted from live data, ready to edit.</p>
     `);
   }
 
@@ -1011,7 +1020,7 @@
       allTransactions = res.items;
       renderTransactionsTable(allTransactions);
     } catch (err){
-      tbody.innerHTML = `<tr><td colspan="8" class="empty-note">Failed to load: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="8" class="empty-note">Failed to load: ${escapeHtml(err.message)}</td></tr>`;
     }
   }
   function renderTransactionsTable(items){
@@ -1023,18 +1032,18 @@
     }
     tbody.innerHTML = items.map(t => `
       <tr>
-        <td class="mono">${t.transaction_id}</td>
-        <td class="mono">${t.user_id}</td>
+        <td class="mono">${escapeHtml(t.transaction_id)}</td>
+        <td class="mono">${escapeHtml(t.user_id)}</td>
         <td>${money(t.amount)}</td>
-        <td>${t.country}</td>
+        <td>${escapeHtml(t.country)}</td>
         <td>
           <div class="score-cell">
             <div class="score-bar"><div class="score-bar-fill" style="width:${t.risk_score}%; background:${LEVEL_COLOR[t.risk_level] || "var(--text-faint)"}"></div></div>
             <span class="score-num">${Math.round(t.risk_score)}</span>
           </div>
         </td>
-        <td><span class="badge ${LEVEL_BADGE[t.risk_level] || ""}">${t.risk_level}</span></td>
-        <td><b class="${DECISION_CLASS[t.decision] || ""}">${t.decision}</b></td>
+        <td><span class="badge ${LEVEL_BADGE[t.risk_level] || ""}">${escapeHtml(t.risk_level)}</span></td>
+        <td><b class="${DECISION_CLASS[t.decision] || ""}">${escapeHtml(t.decision)}</b></td>
         <td class="mono">${new Date(t.timestamp).toLocaleString()}</td>
       </tr>
     `).join("");
@@ -1069,9 +1078,9 @@
       tbody.innerHTML = res.items.map(t => {
         const topReason = (t.reasons && t.reasons[0]) || "—";
         return `
-        <tr data-txn="${t.transaction_id}">
-          <td class="mono">${t.transaction_id}</td>
-          <td class="mono">${t.user_id}</td>
+        <tr data-txn="${escapeHtml(t.transaction_id)}">
+          <td class="mono">${escapeHtml(t.transaction_id)}</td>
+          <td class="mono">${escapeHtml(t.user_id)}</td>
           <td>${money(t.amount)}</td>
           <td>
             <div class="score-cell">
@@ -1079,16 +1088,16 @@
               <span class="score-num">${Math.round(t.risk_score)}</span>
             </div>
           </td>
-          <td><span class="badge ${LEVEL_BADGE[t.risk_level] || ""}">${t.risk_level}</span></td>
-          <td><b class="${DECISION_CLASS[t.decision] || ""}">${t.decision}</b></td>
-          <td class="reason-cell" title="${topReason}">${topReason}</td>
+          <td><span class="badge ${LEVEL_BADGE[t.risk_level] || ""}">${escapeHtml(t.risk_level)}</span></td>
+          <td><b class="${DECISION_CLASS[t.decision] || ""}">${escapeHtml(t.decision)}</b></td>
+          <td class="reason-cell" title="${escapeHtml(topReason)}">${escapeHtml(topReason)}</td>
         </tr>`;
       }).join("");
       tbody.querySelectorAll("tr[data-txn]").forEach(tr => {
         tr.addEventListener("click", () => askAboutTransaction(tr.dataset.txn));
       });
     } catch (err){
-      tbody.innerHTML = `<tr><td colspan="7" class="empty-note">Failed to load: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-note">Failed to load: ${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
@@ -1115,7 +1124,7 @@
       renderMiniChart(document.getElementById("trendsVolumeChart"), res.points, "transaction_count", 0.65);
       renderMiniChart(document.getElementById("trendsFraudChart"), res.points, "fraud_rate", 0.65);
     } catch (err){
-      document.getElementById("trendsVolumeChart").innerHTML = `<div class="chart-empty">Failed to load: ${err.message}</div>`;
+      document.getElementById("trendsVolumeChart").innerHTML = `<div class="chart-empty">Failed to load: ${escapeHtml(err.message)}</div>`;
     }
   }
   document.getElementById("trendsHours").addEventListener("change", loadTrendsView);
@@ -1133,7 +1142,7 @@
       const maxCount = Math.max(...res.items.map(i => i.transaction_count));
       tbody.innerHTML = res.items.map(i => `
         <tr>
-          <td class="mono">${i.country}</td>
+          <td class="mono">${escapeHtml(i.country)}</td>
           <td>${i.transaction_count.toLocaleString()}</td>
           <td>${(i.fraud_rate * 100).toFixed(1)}%</td>
           <td>${i.avg_risk_score.toFixed(1)}</td>
@@ -1141,13 +1150,13 @@
         </tr>
       `).join("");
     } catch (err){
-      tbody.innerHTML = `<tr><td colspan="5" class="empty-note">Failed to load: ${err.message}</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="5" class="empty-note">Failed to load: ${escapeHtml(err.message)}</td></tr>`;
     }
   }
 
   /* ---- Model Metrics ---- */
   function metricsTableHTML(entries){
-    return `<table style="width:100%; font-size:12.5px;">${entries.map(([k,v]) => `<tr><td style="padding:6px 0; color:var(--text-faint);">${k}</td><td style="padding:6px 0; text-align:right; font-weight:600;">${v}</td></tr>`).join("")}</table>`;
+    return `<table style="width:100%; font-size:12.5px;">${entries.map(([k,v]) => `<tr><td style="padding:6px 0; color:var(--text-faint);">${escapeHtml(k)}</td><td style="padding:6px 0; text-align:right; font-weight:600;">${escapeHtml(v)}</td></tr>`).join("")}</table>`;
   }
   async function loadModelMetricsView(){
     const xgbEl = document.getElementById("xgbMetrics");
@@ -1184,7 +1193,7 @@
         ifEl.innerHTML = `<div class="empty-note">No metadata found. Run <span class="mono">python -m ml_pipeline.serialize_model</span>.</div>`;
       }
     } catch (err){
-      xgbEl.innerHTML = ifEl.innerHTML = `<div class="empty-note">Failed to load: ${err.message}</div>`;
+      xgbEl.innerHTML = ifEl.innerHTML = `<div class="empty-note">Failed to load: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -1195,15 +1204,15 @@
       const res = await api("/analytics/rules");
       el.innerHTML = res.rules.map(r => `
         <div style="display:flex; gap:12px; align-items:flex-start; padding:12px 0; border-bottom:1px solid var(--border-soft);">
-          <span class="badge ${LEVEL_BADGE[r.severity] || "badge-high"}">${r.severity}</span>
+          <span class="badge ${LEVEL_BADGE[r.severity] || "badge-high"}">${escapeHtml(r.severity)}</span>
           <div>
-            <div class="mono" style="font-weight:600; color:var(--text); margin-bottom:3px;">${r.name}</div>
-            <div style="color:var(--text-dim);">${r.description}</div>
+            <div class="mono" style="font-weight:600; color:var(--text); margin-bottom:3px;">${escapeHtml(r.name)}</div>
+            <div style="color:var(--text-dim);">${escapeHtml(r.description)}</div>
           </div>
         </div>
       `).join("");
     } catch (err){
-      el.innerHTML = `<div class="empty-note">Failed to load: ${err.message}</div>`;
+      el.innerHTML = `<div class="empty-note">Failed to load: ${escapeHtml(err.message)}</div>`;
     }
   }
 
@@ -1215,7 +1224,7 @@
       const res = await fetch("/health");
       el.innerHTML = `API health check: <b style="color:${res.ok ? "var(--low)" : "var(--critical)"}">${res.ok ? "OK" : "DEGRADED"}</b> (HTTP ${res.status})`;
     } catch (err){
-      el.innerHTML = `<b style="color:var(--critical)">Could not reach the API</b>: ${err.message}`;
+      el.innerHTML = `<b style="color:var(--critical)">Could not reach the API</b>: ${escapeHtml(err.message)}`;
     }
   });
 

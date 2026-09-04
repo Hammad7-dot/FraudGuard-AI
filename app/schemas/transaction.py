@@ -1,8 +1,8 @@
 """Pydantic schemas for transaction I/O."""
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class TransactionCreate(BaseModel):
@@ -24,10 +24,27 @@ class TransactionCreate(BaseModel):
     @field_validator("country")
     @classmethod
     def upper_country(cls, v: str) -> str:
-        return v.upper()
+        normalized = v.upper()
+        if not normalized.isascii() or not normalized.isalpha():
+            raise ValueError("country must be a two-letter ISO-style code")
+        return normalized
+
+    @field_validator("timestamp")
+    @classmethod
+    def validate_timestamp(cls, value: datetime) -> datetime:
+        if value.tzinfo is None or value.utcoffset() is None:
+            raise ValueError("timestamp must be timezone-aware")
+        now = datetime.now(timezone.utc)
+        normalized = value.astimezone(timezone.utc)
+        if normalized > now + timedelta(minutes=5):
+            raise ValueError("timestamp cannot be more than 5 minutes in the future")
+        if normalized < now - timedelta(days=30):
+            raise ValueError("timestamp cannot be more than 30 days old")
+        return normalized
 
 
 class TransactionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     transaction_id: str
     user_id: str
     amount: float
@@ -46,15 +63,13 @@ class TransactionResponse(BaseModel):
     processing_time_ms: float
     analyst_feedback: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 class AnalystFeedbackRequest(BaseModel):
     feedback: str = Field(..., pattern="^(CONFIRMED_FRAUD|FALSE_POSITIVE|LEGITIMATE)$")
     notes: Optional[str] = None
 
 
 class TransactionRecord(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     transaction_id: str
     user_id: str
     amount: float
@@ -64,6 +79,3 @@ class TransactionRecord(BaseModel):
     country: str
     device_id: str
     timestamp: datetime
-
-    class Config:
-        from_attributes = True
