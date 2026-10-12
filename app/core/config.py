@@ -36,6 +36,13 @@ class Settings(BaseSettings):
             raise ValueError(
                 "API_KEY must be set when REQUIRE_API_KEY is true (no insecure default allowed)"
             )
+        if self.environment.lower() == "production":
+            if not self.database_url.startswith("postgresql"):
+                raise ValueError("production requires a PostgreSQL DATABASE_URL")
+            if "*" in self.cors_origins:
+                raise ValueError("production CORS origins must not contain '*'")
+            if self.require_api_key and len(self.api_key) < 32:
+                raise ValueError("production API_KEY must be at least 32 characters")
         return self
 
     # Risk thresholds

@@ -3,13 +3,11 @@ transaction service if the API is not reachable.
 """
 from __future__ import annotations
 
-import json
 import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from datetime import datetime  # noqa: E402
 
 from app.db.session import SessionLocal, init_db  # noqa: E402
 from app.schemas.transaction import TransactionCreate  # noqa: E402

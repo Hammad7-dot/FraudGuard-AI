@@ -2,7 +2,6 @@ from datetime import datetime, timedelta, timezone
 
 from app.schemas.transaction import TransactionCreate
 from app.services.feature_service import FEATURE_ORDER, FeatureService
-from app.streaming.redis_client import RedisClient
 
 
 def build_tx(**overrides):

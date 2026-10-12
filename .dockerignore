@@ -1,0 +1,15 @@
+.git
+.github
+.claude
+.venv
+__pycache__
+*.py[cod]
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.env
+*.db
+.pytest-*
+tests
+docs
+fraud_risk_copilot_demo.png

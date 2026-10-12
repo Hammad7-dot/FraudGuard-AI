@@ -1,12 +1,12 @@
 """Health and readiness endpoints."""
 import time
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, get_redis
 from app.core.config import get_settings
-from app.streaming.redis_client import RedisClient, CircuitState
+from app.streaming.redis_client import RedisClient
 
 router = APIRouter(tags=["health"])
 
@@ -18,7 +18,11 @@ def health() -> dict:
 
 
 @router.get("/ready")
-def ready(db: Session = Depends(get_db_session), redis_client: RedisClient = Depends(get_redis)) -> dict:
+def ready(
+    response: Response,
+    db: Session = Depends(get_db_session),
+    redis_client: RedisClient = Depends(get_redis),
+) -> dict:
     """Readiness check - verifies database and Redis connectivity."""
     db_ok = True
     db_latency_ms = None
@@ -33,10 +37,12 @@ def ready(db: Session = Depends(get_db_session), redis_client: RedisClient = Dep
     redis_circuit_state = redis_client.circuit_state.value if hasattr(redis_client, 'circuit_state') else "unknown"
 
     overall_ready = db_ok and redis_ok
-    status = "ready" if overall_ready else "degraded"
+    readiness_status = "ready" if overall_ready else "degraded"
+    if not overall_ready:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
 
     return {
-        "status": status,
+        "status": readiness_status,
         "checks": {
             "database": {
                 "status": "ok" if db_ok else "failed",

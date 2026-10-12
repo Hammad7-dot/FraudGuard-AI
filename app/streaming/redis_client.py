@@ -114,7 +114,7 @@ class CircuitBreaker:
             result = func(*args, **kwargs)
             self.record_success()
             return result
-        except self._expected_exception as exc:
+        except self._expected_exception:
             self.record_failure()
             raise
 
@@ -202,7 +202,7 @@ class RedisClient:
 
     def zadd(self, key: str, mapping: dict, ttl: int) -> None:
         def op():
-            pipe = self._client.pipeline()
+            pipe = cast(redis.Redis, self._client).pipeline()
             pipe.zadd(key, mapping)
             pipe.expire(key, ttl)
             pipe.execute()
@@ -222,14 +222,14 @@ class RedisClient:
         write, and a write can be combined with a read of its own effect in the same round trip.
         """
         def op():
-            pipe = self._client.pipeline()
+            pipe = cast(redis.Redis, self._client).pipeline()
             build_fn(pipe)
             return pipe.execute()
         return self._safe(op, default=[]) or []
 
     def sadd(self, key: str, value: str, ttl: int) -> None:
         def op():
-            pipe = self._client.pipeline()
+            pipe = cast(redis.Redis, self._client).pipeline()
             pipe.sadd(key, value)
             pipe.expire(key, ttl)
             pipe.execute()
@@ -243,7 +243,7 @@ class RedisClient:
 
     def hset(self, key: str, mapping: dict, ttl: int) -> None:
         def op():
-            pipe = self._client.pipeline()
+            pipe = cast(redis.Redis, self._client).pipeline()
             pipe.hset(key, mapping=mapping)
             pipe.expire(key, ttl)
             pipe.execute()

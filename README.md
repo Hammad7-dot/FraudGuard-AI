@@ -63,6 +63,31 @@ docker compose up --build
 `docker-compose.yml` wires the API to Postgres (`DATABASE_URL`) and Redis (`REDIS_URL`); the
 dashboard reads from the same Postgres instance.
 
+## Production deployment baseline
+
+Production mode is intentionally strict. Set `ENVIRONMENT=production` only when all of the
+following are supplied: a PostgreSQL `DATABASE_URL`, a unique API key of at least 32 characters,
+and explicit `CORS_ORIGINS` (never `*`). The Compose stack requires both `API_KEY` and
+`POSTGRES_PASSWORD`, applies Alembic migrations before starting the API, and waits for Postgres
+and Redis health checks.
+
+```powershell
+$env:API_KEY = "generate-a-unique-32-character-or-longer-secret"
+$env:POSTGRES_PASSWORD = "generate-a-separate-database-password"
+docker compose up --build
+```
+
+CI runs Ruff, mypy, pytest, pip-audit, and a Docker Compose health-check smoke test on every pull
+request and push to `main`. Run the same checks locally with:
+
+```bash
+pip install -r requirements-dev.txt
+ruff check .
+mypy app
+pytest -q --basetemp .pytest-local-tmp
+pip-audit -r requirements.txt
+```
+
 ## Running tests
 
 ```bash

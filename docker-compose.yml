@@ -1,11 +1,9 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: fraudguard
-      POSTGRES_PASSWORD: fraudguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Docker Compose}
       POSTGRES_DB: fraudguard
     ports:
       - "5432:5432"
@@ -30,26 +28,37 @@ services:
   api:
     build: .
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+psycopg2://fraudguard:fraudguard@postgres:5432/fraudguard
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg2://fraudguard:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Docker Compose}@postgres:5432/fraudguard
       REDIS_URL: redis://redis:6379/0
       API_KEY: ${API_KEY:?Set API_KEY in your environment before starting Docker Compose}
+      CORS_ORIGINS: '["http://localhost:8501"]'
     ports:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+    command: ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
 
   dashboard:
     build: .
     command: ["streamlit", "run", "dashboard/streamlit_app.py", "--server.port=8501", "--server.address=0.0.0.0"]
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     environment:
       API_BASE_URL: http://api:8000/api/v1
       API_KEY: ${API_KEY:?Set API_KEY in your environment before starting Docker Compose}
-      DATABASE_URL: postgresql+psycopg2://fraudguard:fraudguard@postgres:5432/fraudguard
+      DATABASE_URL: postgresql+psycopg2://fraudguard:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD before starting Docker Compose}@postgres:5432/fraudguard
     ports:
       - "8501:8501"
     volumes:

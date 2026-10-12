@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from app.db.session import SessionLocal, init_db  # noqa: E402
 from app.models.risk_assessment import RiskAssessment  # noqa: E402
 from app.models.transaction import Transaction  # noqa: E402
-from dashboard.components.theme import (RISK_COLORS, empty_state, page_header,  # noqa: E402
+from dashboard.components.theme import (empty_state, page_header,  # noqa: E402
                                          section_title, sidebar_brand)
 
 st.set_page_config(page_title="Transactions — FraudGuard AI", page_icon="💳", layout="wide")

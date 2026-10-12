@@ -145,9 +145,11 @@ def create_rate_limiter_middleware(app, rate_limit: Optional[int] = None, per: i
         RateLimiterMiddleware instance.
     """
     if rate_limit is not None:
-        rate_limit_getter = lambda: rate_limit
+        def rate_limit_getter() -> int:
+            return rate_limit
     else:
-        rate_limit_getter = lambda: get_settings().rate_limit_per_minute
+        def rate_limit_getter() -> int:
+            return get_settings().rate_limit_per_minute
     settings = get_settings()
     return RateLimiterMiddleware(
         app,

@@ -24,6 +24,8 @@ class Base(DeclarativeBase):
 
 def init_db() -> None:
     """Create tables if they do not exist (fallback for envs without Alembic)."""
+    if settings.environment.lower() == "production":
+        return
     from app.models import device, fraud_reason, risk_assessment, transaction, user  # noqa: F401
 
     Base.metadata.create_all(bind=engine)

@@ -1,10 +1,8 @@
-import os
 
 import pytest
 
 from ml_pipeline.data_cleaning import FEATURE_COLUMNS, generate_synthetic_dataset
 from ml_pipeline.evaluate import evaluate_classifier
-from ml_pipeline.feature_engineering import split_features_labels
 from ml_pipeline.train_isolation_forest import train_isolation_forest_model
 from ml_pipeline.train_xgboost import train_xgboost_model
 

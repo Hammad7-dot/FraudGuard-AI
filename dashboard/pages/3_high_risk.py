@@ -9,8 +9,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..",
 from app.db.session import SessionLocal, init_db  # noqa: E402
 from app.services.analytics_service import AnalyticsService  # noqa: E402
 from dashboard.components.risk_copilot import render_risk_copilot  # noqa: E402
-from dashboard.components.theme import (empty_state, page_header, risk_pill,  # noqa: E402
-                                         section_title, sidebar_brand)
+from dashboard.components.theme import (empty_state, page_header, sidebar_brand)
 
 st.set_page_config(page_title="High Risk — FraudGuard AI", page_icon="🚨", layout="wide")
 sidebar_brand()

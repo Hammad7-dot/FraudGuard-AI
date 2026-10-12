@@ -1,7 +1,6 @@
 """Request validation middleware for input sanitization and size limits."""
 from __future__ import annotations
 
-import json
 from typing import Callable, Optional
 
 from fastapi import Request, Response
